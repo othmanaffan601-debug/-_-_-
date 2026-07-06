@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام المتحف | لوحة التحكم</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- SheetJS for Excel import -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="bg-orbs">
+    <div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div>
+</div>
+
+<div class="layout">
+
+    <!-- ═══════════ SIDEBAR ═══════════ -->
+    <aside class="sidebar glass" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon"><i class="fa-solid fa-building-columns"></i></div>
+            <div class="logo-text"><h1>نظام المتحف</h1><span>لوحة التحكم</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item active" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i><span>سطح المكتب</span></a>
+            <a class="nav-item" data-page="admin"><i class="fa-solid fa-sliders"></i><span>الإدارة</span></a>
+            <a class="nav-item" data-page="shifts"><i class="fa-solid fa-clock-rotate-left"></i><span>جدول الدوام</span></a>
+            <a class="nav-item" data-page="calendar"><i class="fa-solid fa-calendar-days"></i><span>التقويم</span></a>
+            <a class="nav-item" data-page="whatsapp"><i class="fa-brands fa-whatsapp"></i><span>البلاغ اليومي</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="clock-display">
+                <span id="clk-time">12:00</span>
+                <span id="clk-ampm" class="ampm">ص</span>
+            </div>
+            <div id="current-date" class="current-date">-</div>
+        </div>
+    </aside>
+
+    <!-- ═══════════ MAIN ═══════════ -->
+    <main class="main">
+        <header class="topbar glass">
+            <div class="topbar-right">
+                <button class="menu-toggle" id="menu-toggle"><i class="fa-solid fa-bars"></i></button>
+                <h2 class="page-title" id="page-title">سطح المكتب</h2>
+            </div>
+            <div class="user-badge glass">
+                <div class="user-avatar"><i class="fa-solid fa-circle-user"></i></div>
+                <span>المدير العام</span>
+            </div>
+        </header>
+
+        <div class="pages-area">
+
+            <!-- ─── DASHBOARD ─── -->
+            <div class="page active" id="page-dashboard">
+                <div class="stats-row" id="stats-row">
+                    <div class="stat-card glass purple-glow">
+                        <div class="stat-icon purple"><i class="fa-solid fa-shield-halved"></i></div>
+                        <div><div class="stat-num" id="count-platoons">0</div><div class="stat-label">الفصائل</div></div>
+                    </div>
+                    <div class="stat-card glass blue-glow">
+                        <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
+                        <div><div class="stat-num" id="count-employees">0</div><div class="stat-label">الموظفون</div></div>
+                    </div>
+                    <div class="stat-card glass green-glow">
+                        <div class="stat-icon green"><i class="fa-solid fa-user-check"></i></div>
+                        <div><div class="stat-num" id="count-on-duty">0</div><div class="stat-label">يداومون الآن</div></div>
+                    </div>
+                    <div class="stat-card glass orange-glow">
+                        <div class="stat-icon orange"><i class="fa-solid fa-umbrella-beach"></i></div>
+                        <div><div class="stat-num" id="count-off">0</div><div class="stat-label">في إجازة</div></div>
+                    </div>
+                </div>
+
+                <!-- Shift indicator -->
+                <div class="shift-indicator glass" id="shift-indicator">
+                    <div class="shift-ind-content">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>الوردية الحالية: <strong id="current-shift-label">—</strong></span>
+                        <span class="shift-time-label" id="current-shift-time"></span>
+                    </div>
+                </div>
+
+                <div class="section-bar">
+                    <h2><i class="fa-solid fa-bolt" style="color:#34d399"></i> على رأس العمل الآن</h2>
+                    <span class="live-badge"><i class="fa-solid fa-circle"></i> مباشر</span>
+                </div>
+                <div class="cards-grid" id="duty-platoons-grid"></div>
+
+                <div class="section-bar mt-4">
+                    <h2><i class="fa-solid fa-moon" style="color:#f59e0b"></i> في إجازة</h2>
+                    <button class="btn btn-sm btn-primary" id="btn-goto-admin"><i class="fa-solid fa-plus"></i> إضافة فصيل</button>
+                </div>
+                <div class="cards-grid" id="off-platoons-grid"></div>
+            </div>
+
+            <!-- ─── ADMIN ─── -->
+            <div class="page" id="page-admin" style="display:none">
+                <div class="tab-bar">
+                    <button class="tab-btn active" data-tab="tab-platoons"><i class="fa-solid fa-shield-halved"></i> الفصائل</button>
+                    <button class="tab-btn" data-tab="tab-managers"><i class="fa-solid fa-user-shield"></i> المسؤولون</button>
+                    <button class="tab-btn" data-tab="tab-employees"><i class="fa-solid fa-users"></i> الموظفون</button>
+                    <button class="tab-btn" data-tab="tab-points"><i class="fa-solid fa-location-dot"></i> النقاط</button>
+                    <button class="tab-btn" data-tab="tab-excel"><i class="fa-solid fa-file-excel"></i> استيراد Excel</button>
+                </div>
+
+                <!-- TAB: Platoons -->
+                <div id="tab-platoons" class="tab-content active">
+                    <div class="form-section glass">
+                        <div class="form-section-title">
+                            <i class="fa-solid fa-shield-halved fa-lg" style="color:#a78bfa"></i>
+                            <h2 id="platoon-form-title">إضافة فصيل جديد</h2>
+                        </div>
+                        <form id="form-platoon">
+                            <input type="hidden" id="platoon-edit-index" value="">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>اسم الفصيل</label>
+                                    <input type="text" id="platoon-name" class="inp" placeholder="مثال: فصيل الصقر" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>تاريخ بدء الدورة <small>(اليوم الأول - ليل)</small></label>
+                                    <input type="date" id="platoon-cycle-start" class="inp" required>
+                                </div>
+                            </div>
+                            <div class="cycle-info-banner">
+                                <i class="fa-solid fa-rotate"></i>
+                                <strong>نظام الدوام التلقائي:</strong>
+                                <span class="cycle-pill night-pill">2 ليل</span> ←
+                                <span class="cycle-pill aft-pill">2 ظهر</span> ←
+                                <span class="cycle-pill morn-pill">2 صباح</span> ←
+                                <span class="cycle-pill off-pill2">4 إجازة</span>
+                                <span style="color:#94a3b8; margin-right:8px">الوردية تُحدَّد تلقائياً حسب يوم الدورة</span>
+                            </div>
+
+                            <div class="form-row" style="margin-top:16px">
+                                <div class="form-group">
+                                    <label>مسؤولو الفصيل <small>(اختر المسؤولين)</small></label>
+                                    <div id="platoon-managers-sel" class="checkbox-grid"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label>موظفو الفصيل <small>(اختر الموظفين)</small></label>
+                                    <div id="platoon-employees-sel" class="checkbox-grid"></div>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success" id="platoon-submit-btn">
+                                    <i class="fa-solid fa-floppy-disk"></i> حفظ الفصيل
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="platoon-cancel-btn" style="display:none">
+                                    <i class="fa-solid fa-xmark"></i> إلغاء
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="form-section glass">
+                        <div class="form-section-title">
+                            <i class="fa-solid fa-list-ul fa-lg" style="color:#60a5fa"></i>
+                            <h2>قائمة الفصائل</h2>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th><th>الفصيل</th><th>المسؤولون</th>
+                                        <th>الأفراد</th><th>الوردية الحالية</th>
+                                        <th>يوم الدورة</th><th>الحالة</th><th>إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="platoons-list-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Managers -->
+                <div id="tab-managers" class="tab-content" style="display:none">
+                    <div class="form-section glass">
+                        <div class="form-section-title">
+                            <i class="fa-solid fa-user-shield fa-lg" style="color:#34d399"></i>
+                            <h2>إضافة مسؤول دوام</h2>
+                        </div>
+                        <form id="form-manager">
+                            <div class="form-row">
+                                <div class="form-group" style="flex:2">
+                                    <label>الاسم</label>
+                                    <input type="text" id="manager-name" class="inp" placeholder="مثال: محمد سيف" required>
+                                </div>
+                                <div class="form-group" style="flex:1">
+                                    <label>الرتبة</label>
+                                    <input type="text" id="manager-rank" class="inp" placeholder="مثال: وكيل٢">
+                                </div>
+                                <div class="form-group" style="flex:1">
+                                    <label>رقم الهاتف</label>
+                                    <input type="text" id="manager-phone" class="inp" placeholder="رقم الهاتف...">
+                                </div>
+                                <div class="form-group" style="align-self:flex-end">
+                                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> إضافة</button>
+                                </div>
+                            </div>
+                        </form>
+                        <div class="data-list" id="list-managers"></div>
+                    </div>
+                </div>
+
+                <!-- TAB: Employees -->
+                <div id="tab-employees" class="tab-content" style="display:none">
+                    <div class="form-section glass">
+                        <div class="form-section-title">
+                            <i class="fa-solid fa-user-plus fa-lg" style="color:#60a5fa"></i>
+                            <h2>إضافة موظف</h2>
+                        </div>
+                        <form id="form-employee">
+                            <div class="form-row">
+                                <div class="form-group" style="flex:2">
+                                    <label>الاسم</label>
+                                    <input type="text" id="employee-name" class="inp" placeholder="أدخل اسم الموظف" required>
+                                </div>
+                                <div class="form-group" style="flex:1">
+                                    <label>الرتبة</label>
+                                    <input type="text" id="employee-rank" class="inp" placeholder="مثال: عريف">
+                                </div>
+                                <div class="form-group" style="flex:1">
+                                    <label>رقم الهاتف</label>
+                                    <input type="text" id="employee-phone" class="inp" placeholder="رقم الهاتف...">
+                                </div>
+                                <div class="form-group" style="align-self:flex-end">
+                                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> إضافة</button>
+                                </div>
+                            </div>
+                        </form>
+                        <div class="data-list" id="list-employees"></div>
+                    </div>
+                </div>
+
+                <!-- TAB: Points -->
+                <div id="tab-points" class="tab-content" style="display:none">
+                    <div class="form-section glass">
+                        <div class="form-section-title">
+                            <i class="fa-solid fa-location-dot fa-lg" style="color:#fb923c"></i>
+                            <h2>إضافة نقطة حراسة</h2>
+                        </div>
+                        <form id="form-point">
+                            <div class="form-row">
+                                <div class="form-group" style="flex:2">
+                                    <label>اسم النقطة</label>
+                                    <input type="text" id="point-name" class="inp" placeholder="مثال: البوابة الرئيسية" required>
+                                </div>
+                                <div class="form-group" style="flex:1">
+                                    <label>أيقونة</label>
+                                    <select id="point-icon" class="inp">
+                                        <option value="fa-door-open">🚪 بوابة</option>
+                                        <option value="fa-video">📷 مراقبة</option>
+                                        <option value="fa-boxes-stacked">📦 مخازن</option>
+                                        <option value="fa-shield-halved">🛡️ أمن</option>
+                                        <option value="fa-landmark">🏛️ قاعات</option>
+                                        <option value="fa-person-walking">🚶 دورية</option>
+                                        <option value="fa-id-badge">🪪 مدخل</option>
+                                        <option value="fa-users">👥 زوار</option>
+                                        <option value="fa-lock">🔒 أمانات</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="align-self:flex-end">
+                                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> إضافة</button>
+                                </div>
+                            </div>
+                        </form>
+                        <div class="data-list" id="list-points"></div>
+                    </div>
+                </div>
+
+                <!-- TAB: Excel Import -->
+                <div id="tab-excel" class="tab-content" style="display:none">
+                    <div class="form-section glass">
+                        <div class="form-section-title">
+                            <i class="fa-solid fa-file-excel fa-lg" style="color:#22c55e"></i>
+                            <h2>استيراد بيانات من ملف Excel</h2>
+                        </div>
+
+                        <div class="excel-format-hint glass">
+                            <h4><i class="fa-solid fa-circle-info"></i> تنسيق الملف المطلوب</h4>
+                            <p>يجب أن يحتوي ملف Excel على الأعمدة التالية في الصف الأول (عناوين):</p>
+                            <div class="excel-cols">
+                                <span class="excel-col-badge">الاسم <span class="required">*</span></span>
+                                <span class="excel-col-badge">النوع <small>(موظف / مسؤول)</small></span>
+                                <span class="excel-col-badge">الفصيل <small>(اسم الفصيل)</small></span>
+                            </div>
+                            <small style="color:var(--text-muted)">* الاسم فقط إجباري. إذا لم يُحدد النوع، يُضاف كموظف افتراضياً.</small>
+                        </div>
+
+                        <div class="form-group" style="margin-top:16px; max-width:400px">
+                            <label>رفع ملف Excel (.xlsx / .xls)</label>
+                            <input type="file" id="excel-file-input" class="inp" accept=".xlsx,.xls,.csv" style="padding:10px">
+                        </div>
+
+                        <div id="excel-preview-area" style="display:none">
+                            <div class="excel-preview-header">
+                                <h3><i class="fa-solid fa-table"></i> معاينة البيانات (<span id="excel-row-count">0</span> سجل)</h3>
+                                <div class="excel-import-actions">
+                                    <button class="btn btn-success" id="excel-confirm-import">
+                                        <i class="fa-solid fa-check"></i> تأكيد الاستيراد
+                                    </button>
+                                    <button class="btn btn-secondary" id="excel-cancel">
+                                        <i class="fa-solid fa-xmark"></i> إلغاء
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="excel-preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>الاسم</th>
+                                            <th>النوع</th>
+                                            <th>الفصيل</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="excel-preview-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── SHIFTS ─── -->
+            <div class="page" id="page-shifts" style="display:none">
+                <div class="form-section glass">
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-clock-rotate-left fa-lg" style="color:#fb923c"></i>
+                        <h2>جدول توزيع الدوام (2 ليل → 2 ظهر → 2 صباح → 4 إجازة)</h2>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th><th>الفصيل</th><th>المسؤولون</th>
+                                    <th>الأفراد</th><th>يوم الدورة</th>
+                                    <th>الوردية الحالية</th><th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shifts-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── CALENDAR ─── -->
+            <div class="page" id="page-calendar" style="display:none">
+                <div class="form-section glass">
+                    <div class="form-section-title">
+                        <i class="fa-solid fa-calendar-days fa-lg" style="color:#c084fc"></i>
+                        <h2>تقويم الدوام - نظام 2+2+2+4</h2>
+                    </div>
+
+                    <div class="calendar-controls">
+                        <button class="btn btn-secondary btn-sm" id="cal-prev"><i class="fa-solid fa-chevron-right"></i></button>
+                        <span class="cal-month-label" id="cal-month-label">-</span>
+                        <button class="btn btn-secondary btn-sm" id="cal-next"><i class="fa-solid fa-chevron-left"></i></button>
+                        <div class="cal-legend">
+                            <span class="leg night"><span class="leg-dot"></span>ليل</span>
+                            <span class="leg aft"><span class="leg-dot"></span>ظهر</span>
+                            <span class="leg morn"><span class="leg-dot"></span>صباح</span>
+                            <span class="leg off"><span class="leg-dot"></span>إجازة</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="max-width:300px; margin-bottom:16px">
+                        <label>عرض فصيل</label>
+                        <select id="cal-platoon-sel" class="inp"></select>
+                    </div>
+
+                    <div class="calendar-grid-wrapper">
+                        <div class="cal-weekdays">
+                            <span>الأحد</span><span>الاثنين</span><span>الثلاثاء</span>
+                            <span>الأربعاء</span><span>الخميس</span><span>الجمعة</span><span>السبت</span>
+                        </div>
+                        <div class="cal-days-grid" id="cal-days-grid"></div>
+                    </div>
+                    <div class="cycle-summary glass" id="cycle-summary"></div>
+                </div>
+            </div>
+
+            <!-- ─── WHATSAPP REPORT ─── -->
+            <div class="page" id="page-whatsapp" style="display:none">
+                <div class="form-section glass">
+                    <div class="form-section-title">
+                        <i class="fa-brands fa-whatsapp fa-lg" style="color:#25D366"></i>
+                        <h2>البلاغ اليومي - ربط تلقائي بالفصيل والموظفين</h2>
+                    </div>
+                    <form id="form-wa">
+
+                        <!-- Step 1 -->
+                        <div class="wa-step">
+                            <div class="wa-step-num">1</div>
+                            <div class="wa-step-body">
+                                <h3>اختر الفصيل والتفاصيل</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>الفصيل</label>
+                                        <select id="wa-platoon" class="inp" required>
+                                            <option value="">اختر الفصيل...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>اليوم</label>
+                                        <input type="text" id="wa-day" class="inp" placeholder="مثال: يوم السبت">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>التاريخ</label>
+                                        <input type="date" id="wa-date" class="inp">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>فترة الدوام</label>
+                                        <select id="wa-shift-type" class="inp">
+                                            <option value="دوام الصباح">دوام الصباح</option>
+                                            <option value="دوام الظهر">دوام الظهر</option>
+                                            <option value="دوام الليل">دوام الليل</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="wa-platoon-info" class="platoon-info-box" style="display:none"></div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Attendance -->
+                        <div class="wa-step">
+                            <div class="wa-step-num">2</div>
+                            <div class="wa-step-body">
+                                <h3>تحديد الحضور <span class="attendance-count" id="attendance-count"></span></h3>
+                                <p class="step-hint">انقر على اسم الموظف للتبديل بين حاضر / غائب</p>
+                                <div id="wa-attendance-grid" class="attendance-grid"></div>
+                                <div class="form-row" style="margin-top:14px">
+                                    <div class="form-group">
+                                        <label><i class="fa-solid fa-gun" style="color:#f87171"></i> رماية</label>
+                                        <textarea id="wa-shooting" class="inp" rows="2" placeholder="أسماء الموجودين في الرماية..."></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label><i class="fa-solid fa-book" style="color:#fb923c"></i> دورات</label>
+                                        <textarea id="wa-courses" class="inp" rows="2"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label><i class="fa-solid fa-scissors" style="color:#f59e0b"></i> خصم / موعد طبي</label>
+                                        <textarea id="wa-deductions" class="inp" rows="2" placeholder="الاسم - من تاريخ ... إلى ..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Points Assignment -->
+                        <div class="wa-step">
+                            <div class="wa-step-num">3</div>
+                            <div class="wa-step-body">
+                                <h3>توزيع الأفراد على النقاط</h3>
+                                <p class="step-hint">انقر على اسم الموظف تحت النقطة لإضافته إليها</p>
+                                <div id="wa-points-assign" class="points-assign-grid"></div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Send -->
+                        <div class="wa-step">
+                            <div class="wa-step-num">4</div>
+                            <div class="wa-step-body">
+                                <h3>إرسال البلاغ</h3>
+                                <div class="form-group" style="max-width:340px">
+                                    <label>رقم المستقبل (اختياري)</label>
+                                    <input type="text" id="wa-number" class="inp" placeholder="968XXXXXXXX">
+                                </div>
+                                <div class="preview-box" id="wa-preview" style="display:none">
+                                    <div class="preview-title"><i class="fa-solid fa-eye"></i> معاينة البلاغ</div>
+                                    <pre id="wa-preview-text"></pre>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" id="wa-preview-btn">
+                                        <i class="fa-solid fa-eye"></i> معاينة
+                                    </button>
+                                    <button type="submit" class="btn btn-whatsapp">
+                                        <i class="fa-brands fa-whatsapp"></i> إرسال عبر واتساب
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div><!-- /pages-area -->
+    </main>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-backdrop" id="confirm-modal" style="display:none">
+    <div class="modal glass">
+        <div class="modal-icon danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h3 id="confirm-msg">هل أنت متأكد؟</h3>
+        <div class="modal-actions">
+            <button class="btn btn-danger"    id="confirm-yes">نعم، حذف</button>
+            <button class="btn btn-secondary" id="confirm-no">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-backdrop" id="success-modal" style="display:none">
+    <div class="modal glass">
+        <div class="modal-icon success"><i class="fa-regular fa-circle-check"></i></div>
+        <h3 id="success-msg">تمت العملية بنجاح</h3>
+        <button class="btn btn-success" id="success-ok">موافق</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
