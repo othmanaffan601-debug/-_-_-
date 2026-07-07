@@ -103,8 +103,6 @@
             <div class="page" id="page-admin" style="display:none">
                 <div class="tab-bar">
                     <button class="tab-btn active" data-tab="tab-platoons"><i class="fa-solid fa-shield-halved"></i> الفصائل</button>
-                    <button class="tab-btn" data-tab="tab-managers"><i class="fa-solid fa-user-shield"></i> المسؤولون</button>
-                    <button class="tab-btn" data-tab="tab-employees"><i class="fa-solid fa-users"></i> الموظفون</button>
                     <button class="tab-btn" data-tab="tab-points"><i class="fa-solid fa-location-dot"></i> النقاط</button>
                     <button class="tab-btn" data-tab="tab-excel"><i class="fa-solid fa-file-excel"></i> استيراد Excel</button>
                 </div>
@@ -138,16 +136,6 @@
                                 <span style="color:#94a3b8; margin-right:8px">الوردية تُحدَّد تلقائياً حسب يوم الدورة</span>
                             </div>
 
-                            <div class="form-row" style="margin-top:16px">
-                                <div class="form-group">
-                                    <label>مسؤولو الفصيل <small>(اختر المسؤولين)</small></label>
-                                    <div id="platoon-managers-sel" class="checkbox-grid"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label>موظفو الفصيل <small>(اختر الموظفين)</small></label>
-                                    <div id="platoon-employees-sel" class="checkbox-grid"></div>
-                                </div>
-                            </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-success" id="platoon-submit-btn">
                                     <i class="fa-solid fa-floppy-disk"></i> حفظ الفصيل
@@ -179,65 +167,82 @@
                     </div>
                 </div>
 
-                <!-- TAB: Managers -->
-                <div id="tab-managers" class="tab-content" style="display:none">
+                <!-- TAB: Platoon Manage (Sub-tab) -->
+                <div id="tab-platoon-manage" class="tab-content" style="display:none">
                     <div class="form-section glass">
-                        <div class="form-section-title">
-                            <i class="fa-solid fa-user-shield fa-lg" style="color:#34d399"></i>
-                            <h2>إضافة مسؤول دوام</h2>
-                        </div>
-                        <form id="form-manager">
-                            <div class="form-row">
-                                <div class="form-group" style="flex:2">
-                                    <label>الاسم</label>
-                                    <input type="text" id="manager-name" class="inp" placeholder="مثال: محمد سيف" required>
-                                </div>
-                                <div class="form-group" style="flex:1">
-                                    <label>الرتبة</label>
-                                    <input type="text" id="manager-rank" class="inp" placeholder="مثال: وكيل٢">
-                                </div>
-                                <div class="form-group" style="flex:1">
-                                    <label>رقم الهاتف</label>
-                                    <input type="text" id="manager-phone" class="inp" placeholder="رقم الهاتف...">
-                                </div>
-                                <div class="form-group" style="align-self:flex-end">
-                                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> إضافة</button>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px; flex-wrap: wrap; gap:10px">
+                            <div style="display:flex; align-items:center; gap:12px">
+                                <i class="fa-solid fa-users-gear fa-2xl" style="color:#818cf8"></i>
+                                <div>
+                                    <h2 id="pm-platoon-title" style="margin:0; font-size:1.4rem">إدارة أفراد الفصيل</h2>
+                                    <p style="margin:0; color:var(--muted); font-size:.8rem">إضافة وتعديل المسؤولين والموظفين الخاصين بهذا الفصيل</p>
                                 </div>
                             </div>
-                        </form>
-                        <div class="data-list" id="list-managers"></div>
+                            <button class="btn btn-secondary btn-sm" onclick="exitPlatoonManage()"><i class="fa-solid fa-arrow-left"></i> عودة للفصائل</button>
+                        </div>
+                        
+                        <input type="hidden" id="pm-platoon-index" value="">
+                        
+                        <div class="pm-split-grid">
+                            <!-- Managers Column -->
+                            <div class="pm-col">
+                                <div class="form-section-title" style="margin-bottom: 12px; padding-bottom: 8px;">
+                                    <i class="fa-solid fa-user-shield" style="color:#34d399"></i>
+                                    <h3 style="margin:0; font-size:.95rem">مسؤولو الفصيل</h3>
+                                </div>
+                                <form id="pm-form-manager" style="margin-bottom:15px">
+                                    <div class="form-row">
+                                        <div class="form-group" style="flex:2">
+                                            <label>الاسم</label>
+                                            <input type="text" id="pm-manager-name" class="inp" placeholder="الاسم" required>
+                                        </div>
+                                        <div class="form-group" style="flex:1">
+                                            <label>الرتبة</label>
+                                            <input type="text" id="pm-manager-rank" class="inp" placeholder="الرتبة">
+                                        </div>
+                                        <div class="form-group" style="flex:1">
+                                            <label>الهاتف</label>
+                                            <input type="text" id="pm-manager-phone" class="inp" placeholder="الهاتف">
+                                        </div>
+                                        <div class="form-group" style="align-self:flex-end">
+                                            <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> إضافة</button>
+                                        </div>
+                                    </div>
+                                </form>
+                                <div class="data-list" id="pm-list-managers" style="max-height: 350px; overflow-y: auto"></div>
+                            </div>
+                            
+                            <!-- Employees Column -->
+                            <div class="pm-col">
+                                <div class="form-section-title" style="margin-bottom: 12px; padding-bottom: 8px;">
+                                    <i class="fa-solid fa-users" style="color:#60a5fa"></i>
+                                    <h3 style="margin:0; font-size:.95rem">موظفو الفصيل</h3>
+                                </div>
+                                <form id="pm-form-employee" style="margin-bottom:15px">
+                                    <div class="form-row">
+                                        <div class="form-group" style="flex:2">
+                                            <label>الاسم</label>
+                                            <input type="text" id="pm-employee-name" class="inp" placeholder="الاسم" required>
+                                        </div>
+                                        <div class="form-group" style="flex:1">
+                                            <label>الرتبة</label>
+                                            <input type="text" id="pm-employee-rank" class="inp" placeholder="الرتبة">
+                                        </div>
+                                        <div class="form-group" style="flex:1">
+                                            <label>الهاتف</label>
+                                            <input type="text" id="pm-employee-phone" class="inp" placeholder="الهاتف">
+                                        </div>
+                                        <div class="form-group" style="align-self:flex-end">
+                                            <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> إضافة</button>
+                                        </div>
+                                    </div>
+                                </form>
+                                <div class="data-list" id="pm-list-employees" style="max-height: 350px; overflow-y: auto"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- TAB: Employees -->
-                <div id="tab-employees" class="tab-content" style="display:none">
-                    <div class="form-section glass">
-                        <div class="form-section-title">
-                            <i class="fa-solid fa-user-plus fa-lg" style="color:#60a5fa"></i>
-                            <h2>إضافة موظف</h2>
-                        </div>
-                        <form id="form-employee">
-                            <div class="form-row">
-                                <div class="form-group" style="flex:2">
-                                    <label>الاسم</label>
-                                    <input type="text" id="employee-name" class="inp" placeholder="أدخل اسم الموظف" required>
-                                </div>
-                                <div class="form-group" style="flex:1">
-                                    <label>الرتبة</label>
-                                    <input type="text" id="employee-rank" class="inp" placeholder="مثال: عريف">
-                                </div>
-                                <div class="form-group" style="flex:1">
-                                    <label>رقم الهاتف</label>
-                                    <input type="text" id="employee-phone" class="inp" placeholder="رقم الهاتف...">
-                                </div>
-                                <div class="form-group" style="align-self:flex-end">
-                                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> إضافة</button>
-                                </div>
-                            </div>
-                        </form>
-                        <div class="data-list" id="list-employees"></div>
-                    </div>
-                </div>
 
                 <!-- TAB: Points -->
                 <div id="tab-points" class="tab-content" style="display:none">

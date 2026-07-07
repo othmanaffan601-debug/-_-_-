@@ -8,6 +8,38 @@
 function getData(k){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):[]; }catch(e){return[];} }
 function saveData(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
 
+(function migrateDb(){
+    const platoons = getData('platoons');
+    let migrated = false;
+    platoons.forEach(p => {
+        if(p.managers && p.managers.length > 0 && typeof p.managers[0] === 'string') {
+            const oldManagers = getData('managers');
+            p.managers = p.managers.map(name => {
+                const found = oldManagers.find(m => m.name === name);
+                return { name: name, rank: found ? found.rank || '' : '', phone: found ? found.phone || '' : '' };
+            });
+            migrated = true;
+        } else if(!p.managers) {
+            p.managers = [];
+            migrated = true;
+        }
+        if(p.employees && p.employees.length > 0 && typeof p.employees[0] === 'string') {
+            const oldEmployees = getData('employees');
+            p.employees = p.employees.map(name => {
+                const found = oldEmployees.find(e => e.name === name);
+                return { name: name, rank: found ? found.rank || '' : '', phone: found ? found.phone || '' : '' };
+            });
+            migrated = true;
+        } else if(!p.employees) {
+            p.employees = [];
+            migrated = true;
+        }
+    });
+    if(migrated) {
+        saveData('platoons', platoons);
+    }
+})();
+
 // ─── Rotation (2+2+2+4 = 10-day cycle) ───
 // Day 0,1 → ليل | Day 2,3 → ظهر | Day 4,5 → صباح | Day 6-9 → إجازة
 const CYCLE_LEN = 10;
@@ -109,13 +141,17 @@ function esc(s){
 // ════════════════════════════════════════════════
 function renderDashboard(){
     const platoons=getData('platoons');
-    const employees=getData('employees');
+    
+    let totalEmployees = 0;
+    platoons.forEach(p => {
+        totalEmployees += (p.employees || []).length;
+    });
 
     const dutyList=platoons.filter(p=>getPlatoonStatus(p).status==='duty');
     const offList =platoons.filter(p=>getPlatoonStatus(p).status!=='duty');
 
     document.getElementById('count-platoons').textContent=platoons.length;
-    document.getElementById('count-employees').textContent=employees.length;
+    document.getElementById('count-employees').textContent=totalEmployees;
     document.getElementById('count-on-duty').textContent=dutyList.length;
     document.getElementById('count-off').textContent=offList.length;
 
@@ -141,7 +177,7 @@ function buildPlatoonCards(gridId,list,isOff){
     grid.innerHTML=list.map(p=>{
         const idx=allPlatoons.indexOf(p);
         const st=getPlatoonStatus(p);
-        const mgrStr=(p.managers||[]).join(' ، ')||'—';
+        const mgrStr=(p.managers||[]).map(m=>(m.rank?m.rank+'/':'')+m.name).join(' ، ')||'—';
         const empCount=(p.employees||[]).length;
         const shiftCls=st.shift==='ليل'?'night':st.shift==='ظهر'?'afternoon':st.shift==='صباح'?'morning':'off-pill';
         const pillLabel=isOff?`<span class="shift-pill off-pill">إجازة (يوم ${st.day||''} من 4)</span>`:
@@ -158,8 +194,9 @@ function buildPlatoonCards(gridId,list,isOff){
                 ${!isOff?`<div class="info-line"><i class="fa-solid fa-clock"></i><div><strong>وقت الوردية:</strong> ${shiftHoursLabel(st.shift)}</div></div>`:''}
             </div>
             <div class="platoon-card-actions">
-                <button class="btn btn-primary btn-sm" onclick="editPlatoon(${idx})"><i class="fa-solid fa-pen"></i> تعديل</button>
-                <button class="btn btn-danger  btn-sm" onclick="deletePlatoon(${idx})"><i class="fa-solid fa-trash"></i> حذف</button>
+                <button class="btn btn-success btn-sm" onclick="goTo('admin'); managePlatoonMembers(${idx});"><i class="fa-solid fa-users-gear"></i> إدارة الأفراد</button>
+                <button class="btn btn-primary btn-sm" onclick="editPlatoon(${idx})"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn btn-danger  btn-sm" onclick="deletePlatoon(${idx})"><i class="fa-solid fa-trash"></i></button>
             </div>
         </div>`;
     }).join('');
@@ -176,37 +213,8 @@ function shiftHoursLabel(shift){
 //  ADMIN
 // ════════════════════════════════════════════════
 function renderAdmin(){
-    renderManagersList();
-    renderEmployeesList();
     renderPointsList();
     renderPlatoonsList();
-    populatePlatoonFormSelects();
-}
-
-function renderManagersList(){
-    const list=getData('managers');
-    const el=document.getElementById('list-managers');
-    if(!el) return;
-    el.innerHTML=list.length===0?'<p style="color:var(--muted);padding:8px;font-size:.82rem">لا يوجد مسؤولون مضافون.</p>':
-        list.map((m,i)=>`<div class="data-item">
-            <span class="data-item-name">${esc(m.name)} <small style="color:var(--muted);margin-right:10px">${m.rank?`(${esc(m.rank)})`:''} ${m.phone?`<i class="fa-solid fa-phone"></i> ${esc(m.phone)}`:''}</small></span>
-            <div class="data-item-actions">
-                <button class="btn btn-primary btn-sm" onclick="editManager(${i})"><i class="fa-solid fa-pen"></i></button>
-                <button class="btn btn-danger  btn-sm" onclick="deleteManager(${i})"><i class="fa-solid fa-trash"></i></button>
-            </div></div>`).join('');
-}
-
-function renderEmployeesList(){
-    const list=getData('employees');
-    const el=document.getElementById('list-employees');
-    if(!el) return;
-    el.innerHTML=list.length===0?'<p style="color:var(--muted);padding:8px;font-size:.82rem">لا يوجد موظفون مضافون.</p>':
-        list.map((e,i)=>`<div class="data-item">
-            <span class="data-item-name">${esc(e.name)} <small style="color:var(--muted);margin-right:10px">${e.rank?`(${esc(e.rank)})`:''} ${e.phone?`<i class="fa-solid fa-phone"></i> ${esc(e.phone)}`:''}</small></span>
-            <div class="data-item-actions">
-                <button class="btn btn-primary btn-sm" onclick="editEmployee(${i})"><i class="fa-solid fa-pen"></i></button>
-                <button class="btn btn-danger  btn-sm" onclick="deleteEmployee(${i})"><i class="fa-solid fa-trash"></i></button>
-            </div></div>`).join('');
 }
 
 function renderPointsList(){
@@ -236,15 +244,20 @@ function renderPlatoonsList(){
             ?`<span style="color:#34d399">● دوام - ${esc(st.shift)} (يوم ${st.day}/6)</span>`
             :(st.status==='unknown'?'<span style="color:#64748b">—</span>'
             :`<span style="color:#fbbf24">☾ إجازة (يوم ${st.day}/4)</span>`);
+            
+        const mgrStr = (p.managers||[]).map(m=>(m.rank?m.rank+'/':'')+m.name).join('، ') || '—';
+        const empCount = (p.employees||[]).length;
+            
         return `<tr>
-            <td>${i+1}</td>
-            <td><strong>${esc(p.name)}</strong></td>
-            <td style="font-size:.8rem">${(p.managers||[]).join('، ')||'—'}</td>
-            <td>${(p.employees||[]).length}</td>
-            <td>${st.shift?`<span class="shift-pill ${st.shift==='ليل'?'night':st.shift==='ظهر'?'afternoon':'morning'}">${esc(st.shift)}</span>`:'—'}</td>
-            <td>${st.day!==null?st.day:'—'}</td>
-            <td>${statusBadge}</td>
+            <td data-label="#">${i+1}</td>
+            <td data-label="الفصيل"><strong>${esc(p.name)}</strong></td>
+            <td data-label="المسؤولون" style="font-size:.8rem">${esc(mgrStr)}</td>
+            <td data-label="الأفراد">${empCount}</td>
+            <td data-label="الوردية الحالية">${st.shift?`<span class="shift-pill ${st.shift==='ليل'?'night':st.shift==='ظهر'?'afternoon':'morning'}">${esc(st.shift)}</span>`:'—'}</td>
+            <td data-label="يوم الدورة">${st.day!==null?st.day:'—'}</td>
+            <td data-label="الحالة">${statusBadge}</td>
             <td>
+                <button class="btn btn-success btn-sm" onclick="managePlatoonMembers(${i})"><i class="fa-solid fa-users-gear"></i> إدارة الأفراد</button>
                 <button class="btn btn-primary btn-sm" onclick="editPlatoon(${i})"><i class="fa-solid fa-pen"></i></button>
                 <button class="btn btn-danger  btn-sm" onclick="deletePlatoon(${i})"><i class="fa-solid fa-trash"></i></button>
             </td>
@@ -252,19 +265,115 @@ function renderPlatoonsList(){
     }).join('');
 }
 
-function populatePlatoonFormSelects(){
-    const managers =getData('managers');
-    const employees=getData('employees');
-    const mSel=document.getElementById('platoon-managers-sel');
-    const eSel=document.getElementById('platoon-employees-sel');
-    if(mSel) mSel.innerHTML=managers.map(m=>`<label class="checkbox-item"><input type="checkbox" value="${esc(m.name)}" class="mgr-chk"> ${m.rank?esc(m.rank)+'/':''}${esc(m.name)}</label>`).join('');
-    if(eSel) eSel.innerHTML=employees.map(e=>`<label class="checkbox-item"><input type="checkbox" value="${esc(e.name)}" class="emp-chk"> ${e.rank?esc(e.rank)+'/':''}${esc(e.name)}</label>`).join('');
-    document.querySelectorAll('.checkbox-item input[type="checkbox"]').forEach(chk => {
-        chk.addEventListener('change', function() {
-            this.parentElement.classList.toggle('checked', this.checked);
-        });
+// ─── Platoon Members Sub-tab CRUD ───
+window.managePlatoonMembers = function(i) {
+    const platoons = getData('platoons');
+    const p = platoons[i];
+    if(!p) return;
+    document.getElementById('pm-platoon-index').value = i;
+    document.getElementById('pm-platoon-title').textContent = `إدارة أفراد فصيل: ${p.name}`;
+    
+    // Hide other tab contents and show sub-tab
+    document.querySelectorAll('.tab-content').forEach(c=>c.style.display='none');
+    document.getElementById('tab-platoon-manage').style.display = 'block';
+    
+    renderPlatoonMembersList();
+};
+
+window.exitPlatoonManage = function() {
+    switchTab('tab-platoons');
+    renderPlatoonsList();
+};
+
+window.renderPlatoonMembersList = function() {
+    const idx = parseInt(document.getElementById('pm-platoon-index').value);
+    const platoons = getData('platoons');
+    const p = platoons[idx];
+    if(!p) return;
+    
+    const mgrList = document.getElementById('pm-list-managers');
+    const empList = document.getElementById('pm-list-employees');
+    
+    if(mgrList) {
+        const list = p.managers || [];
+        mgrList.innerHTML = list.length === 0 ? '<p style="color:var(--muted);padding:8px;font-size:.82rem">لا يوجد مسؤولون في هذا الفصيل.</p>' :
+            list.map((m, i) => `<div class="data-item">
+                <span class="data-item-name">${esc(m.name)} <small style="color:var(--muted);margin-right:10px">${m.rank ? `(${esc(m.rank)})` : ''} ${m.phone ? `📱 ${esc(m.phone)}` : ''}</small></span>
+                <div class="data-item-actions">
+                    <button class="btn btn-primary btn-sm" onclick="editPlatoonManager(${i})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-danger btn-sm" onclick="deletePlatoonManager(${i})"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>`).join('');
+    }
+    
+    if(empList) {
+        const list = p.employees || [];
+        empList.innerHTML = list.length === 0 ? '<p style="color:var(--muted);padding:8px;font-size:.82rem">لا يوجد موظفون في هذا الفصيل.</p>' :
+            list.map((e, i) => `<div class="data-item">
+                <span class="data-item-name">${esc(e.name)} <small style="color:var(--muted);margin-right:10px">${e.rank ? `(${esc(e.rank)})` : ''} ${e.phone ? `📱 ${esc(e.phone)}` : ''}</small></span>
+                <div class="data-item-actions">
+                    <button class="btn btn-primary btn-sm" onclick="editPlatoonEmployee(${i})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-danger btn-sm" onclick="deletePlatoonEmployee(${i})"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>`).join('');
+    }
+};
+
+window.editPlatoonManager = function(i) {
+    const idx = parseInt(document.getElementById('pm-platoon-index').value);
+    const platoons = getData('platoons');
+    const list = platoons[idx].managers || [];
+    const n = prompt('تعديل اسم المسؤول:', list[i].name);
+    if(n !== null && n.trim()){
+        const r = prompt('تعديل الرتبة (اتركه فارغاً إن لم يوجد):', list[i].rank || '');
+        const p = prompt('تعديل رقم الهاتف (اتركه فارغاً إن لم يوجد):', list[i].phone || '');
+        list[i].name = n.trim();
+        if(r !== null) list[i].rank = r.trim();
+        if(p !== null) list[i].phone = p.trim();
+        saveData('platoons', platoons);
+        renderPlatoonMembersList();
+        showSuccess('تم التعديل');
+    }
+};
+
+window.deletePlatoonManager = function(i) {
+    confirmAction('حذف المسؤول من الفصيل؟', () => {
+        const idx = parseInt(document.getElementById('pm-platoon-index').value);
+        const platoons = getData('platoons');
+        platoons[idx].managers.splice(i, 1);
+        saveData('platoons', platoons);
+        renderPlatoonMembersList();
+        showSuccess('تم الحذف');
     });
-}
+};
+
+window.editPlatoonEmployee = function(i) {
+    const idx = parseInt(document.getElementById('pm-platoon-index').value);
+    const platoons = getData('platoons');
+    const list = platoons[idx].employees || [];
+    const n = prompt('تعديل اسم الموظف:', list[i].name);
+    if(n !== null && n.trim()){
+        const r = prompt('تعديل الرتبة (اتركه فارغاً إن لم يوجد):', list[i].rank || '');
+        const p = prompt('تعديل رقم الهاتف (اتركه فارغاً إن لم يوجد):', list[i].phone || '');
+        list[i].name = n.trim();
+        if(r !== null) list[i].rank = r.trim();
+        if(p !== null) list[i].phone = p.trim();
+        saveData('platoons', platoons);
+        renderPlatoonMembersList();
+        showSuccess('تم التعديل');
+    }
+};
+
+window.deletePlatoonEmployee = function(i) {
+    confirmAction('حذف الموظف من الفصيل؟', () => {
+        const idx = parseInt(document.getElementById('pm-platoon-index').value);
+        const platoons = getData('platoons');
+        platoons[idx].employees.splice(i, 1);
+        saveData('platoons', platoons);
+        renderPlatoonMembersList();
+        showSuccess('تم الحذف');
+    });
+};
 
 // ════════════════════════════════════════════════
 //  SHIFTS PAGE
@@ -287,14 +396,18 @@ function renderShifts(){
         const statusBadge=st.status==='duty'
             ?'<span style="color:#34d399;font-weight:700">● دوام</span>'
             :'<span style="color:#fbbf24;font-weight:700">☾ إجازة</span>';
+        
+        const mgrStr = (p.managers||[]).map(m=>(m.rank?m.rank+'/':'')+m.name).join('، ') || '—';
+        const empCount = (p.employees||[]).length;
+        
         return `<tr>
-            <td>${i+1}</td>
-            <td><strong>${esc(p.name)}</strong></td>
-            <td style="font-size:.8rem">${(p.managers||[]).join('، ')||'—'}</td>
-            <td>${(p.employees||[]).length}</td>
-            <td>${cycleDesc}</td>
-            <td>${st.shift?`<span class="shift-pill ${shiftCls}">${esc(st.shift)} ${shiftHoursLabel(st.shift)}</span>`:'—'}</td>
-            <td>${statusBadge}</td>
+            <td data-label="#">${i+1}</td>
+            <td data-label="الفصيل"><strong>${esc(p.name)}</strong></td>
+            <td data-label="المسؤولون" style="font-size:.8rem">${esc(mgrStr)}</td>
+            <td data-label="الأفراد">${empCount}</td>
+            <td data-label="يوم الدورة">${cycleDesc}</td>
+            <td data-label="الوردية">${st.shift?`<span class="shift-pill ${shiftCls}">${esc(st.shift)} ${shiftHoursLabel(st.shift)}</span>`:'—'}</td>
+            <td data-label="الحالة">${statusBadge}</td>
         </tr>`;
     }).join('');
 }
@@ -416,7 +529,7 @@ function loadWaPlatoon(idx){
         infoBox.style.display='grid';
         infoBox.innerHTML=`
             <div><strong>الفصيل:</strong> ${esc(p.name)}</div>
-            <div><strong>المسؤولون:</strong> ${(p.managers||[]).join(' ، ')||'—'}</div>
+            <div><strong>المسؤولون:</strong> ${(p.managers||[]).map(m=> (m.rank ? m.rank + '/' : '') + m.name).join(' ، ')||'—'}</div>
             <div><strong>الأفراد:</strong> ${(p.employees||[]).length} موظف</div>
             <div><strong>الحالة:</strong> ${st.status==='duty'?`<span style="color:#34d399">● دوام ${esc(st.shift)}</span>`:'<span style="color:#fbbf24">☾ إجازة</span>'}</div>`;
     }
@@ -436,12 +549,12 @@ function loadWaPlatoon(idx){
     renderWaPoints(p.employees||[]);
 }
 
-// Attendance chips state: Set of present employees
+// Attendance chips state: Set of present employees (stores names as strings)
 const presentEmployees = new Set();
 
 function renderWaAttendance(employees){
     presentEmployees.clear();
-    employees.forEach(n=>presentEmployees.add(n));
+    employees.forEach(e=>presentEmployees.add(e.name));
 
     const grid=document.getElementById('wa-attendance-grid');
     if(!grid) return;
@@ -450,9 +563,9 @@ function renderWaAttendance(employees){
         updateAttendanceCount();
         return;
     }
-    grid.innerHTML=employees.map(name=>`
-        <span class="attend-chip present" data-emp="${esc(name)}" onclick="toggleAttendance(this)">
-            ${esc(name)}
+    grid.innerHTML=employees.map(e=>`
+        <span class="attend-chip present" data-emp="${esc(e.name)}" onclick="toggleAttendance(this)">
+            ${e.rank ? esc(e.rank) + '/' : ''}${esc(e.name)}
         </span>`).join('');
     updateAttendanceCount();
 }
@@ -491,13 +604,13 @@ function renderWaPoints(employees){
 
     grid.innerHTML=points.map(pt=>{
         if(!pointAssignments[pt.name]) pointAssignments[pt.name]=new Set();
-        const empBtns=employees.map(name=>`
+        const empBtns=employees.map(e=>`
             <button type="button"
-                class="point-emp-btn ${presentEmployees.has(name)?'':'absent'}"
-                data-emp="${esc(name)}"
+                class="point-emp-btn ${presentEmployees.has(e.name)?'':'absent'}"
+                data-emp="${esc(e.name)}"
                 data-point="${esc(pt.name)}"
                 onclick="togglePointAssign(this)">
-                ${esc(name)}
+                ${e.rank ? esc(e.rank) + '/' : ''}${esc(e.name)}
             </button>`).join('');
         return `
         <div class="point-assign-card">
@@ -561,9 +674,9 @@ function buildWaReport(){
 
     const totalEmps=(p.employees||[]).length;
     const presentArr=Array.from(presentEmployees);
-    const absentArr=(p.employees||[]).filter(n=>!presentEmployees.has(n));
+    const absentArr=(p.employees||[]).filter(e=>!presentEmployees.has(e.name)).map(e=>(e.rank?e.rank+'/':'')+e.name);
     const presentCount=presentArr.length;
-    const managersStr=(p.managers||[]).join('\n ');
+    const managersStr=(p.managers||[]).map(m=>(m.rank?m.rank+'/':'')+m.name).join('\n ');
 
     let txt='';
     txt+=`*سيدي ضابط المركز - مسؤول المركز المناوب*\n\n`;
@@ -595,42 +708,6 @@ function buildWaReport(){
     return txt;
 }
 
-// ════════════════════════════════════════════════
-//  CRUD – Managers
-// ════════════════════════════════════════════════
-window.editManager=function(i){
-    const list=getData('managers');
-    const n=prompt('تعديل اسم المسؤول:',list[i].name);
-    if(n!==null && n.trim()){
-        const r=prompt('تعديل الرتبة (اتركه فارغاً إن لم يوجد):',list[i].rank||'');
-        const p=prompt('تعديل رقم الهاتف (اتركه فارغاً إن لم يوجد):',list[i].phone||'');
-        list[i].name=n.trim();
-        if(r!==null) list[i].rank=r.trim();
-        if(p!==null) list[i].phone=p.trim();
-        saveData('managers',list);renderAdmin();showSuccess('تم التعديل');
-    }
-};
-window.deleteManager=function(i){
-    confirmAction('حذف المسؤول؟',()=>{const list=getData('managers');list.splice(i,1);saveData('managers',list);renderAdmin();showSuccess('تم الحذف');});
-};
-
-// ── Employees ──
-window.editEmployee=function(i){
-    const list=getData('employees');
-    const n=prompt('تعديل اسم الموظف:',list[i].name);
-    if(n!==null && n.trim()){
-        const r=prompt('تعديل الرتبة (اتركه فارغاً إن لم يوجد):',list[i].rank||'');
-        const p=prompt('تعديل رقم الهاتف (اتركه فارغاً إن لم يوجد):',list[i].phone||'');
-        list[i].name=n.trim();
-        if(r!==null) list[i].rank=r.trim();
-        if(p!==null) list[i].phone=p.trim();
-        saveData('employees',list);renderAdmin();showSuccess('تم التعديل');
-    }
-};
-window.deleteEmployee=function(i){
-    confirmAction('حذف الموظف؟',()=>{const list=getData('employees');list.splice(i,1);saveData('employees',list);renderAdmin();showSuccess('تم الحذف');});
-};
-
 // ── Points ──
 window.editPoint=function(i){
     const list=getData('points');
@@ -654,18 +731,9 @@ window.editPlatoon=function(i){
     const platoons=getData('platoons');
     const p=platoons[i];
     if(!p) return;
-    populatePlatoonFormSelects();
     document.getElementById('platoon-name').value=p.name||'';
     document.getElementById('platoon-cycle-start').value=p.cycleStart||'';
     document.getElementById('platoon-edit-index').value=i;
-    document.querySelectorAll('#platoon-managers-sel .mgr-chk').forEach(chk => {
-        chk.checked = (p.managers||[]).includes(chk.value);
-        chk.parentElement.classList.toggle('checked', chk.checked);
-    });
-    document.querySelectorAll('#platoon-employees-sel .emp-chk').forEach(chk => {
-        chk.checked = (p.employees||[]).includes(chk.value);
-        chk.parentElement.classList.toggle('checked', chk.checked);
-    });
     document.getElementById('platoon-form-title').textContent='تعديل الفصيل';
     document.getElementById('platoon-submit-btn').innerHTML='<i class="fa-solid fa-floppy-disk"></i> حفظ التعديلات';
     document.getElementById('platoon-cancel-btn').style.display='inline-flex';
@@ -719,46 +787,36 @@ function handleExcelFile(file){
 
 function confirmExcelImport(){
     if(excelImportData.length===0) return;
-    const employees=getData('employees');
-    const managers =getData('managers');
-    const platoons =getData('platoons');
+    const platoons = getData('platoons');
 
     let addedEmp=0, addedMgr=0;
 
     excelImportData.forEach(row=>{
         if(!row.name) return;
+        
+        let pName = row.platoon ? row.platoon.trim() : 'أفراد عامين';
+        let p = platoons.find(pl=>pl.name===pName);
+        if(!p) {
+            p = { name: pName, cycleStart: new Date().toISOString().split('T')[0], managers: [], employees: [] };
+            platoons.push(p);
+        }
+        
+        const person = { name: row.name, rank: '', phone: '' };
         if(row.type==='مسؤول'){
-            if(!managers.find(m=>m.name===row.name)){
-                managers.push({name:row.name});
+            p.managers = p.managers || [];
+            if(!p.managers.some(m=>m.name===row.name)){
+                p.managers.push(person);
                 addedMgr++;
             }
         } else {
-            if(!employees.find(e=>e.name===row.name)){
-                employees.push({name:row.name});
+            p.employees = p.employees || [];
+            if(!p.employees.some(e=>e.name===row.name)){
+                p.employees.push(person);
                 addedEmp++;
-            }
-        }
-        // Assign to platoon if specified
-        if(row.platoon){
-            const p=platoons.find(pl=>pl.name===row.platoon);
-            if(p){
-                if(row.type==='مسؤول'){
-                    if(!(p.managers||[]).includes(row.name)){
-                        p.managers=p.managers||[];
-                        p.managers.push(row.name);
-                    }
-                } else {
-                    if(!(p.employees||[]).includes(row.name)){
-                        p.employees=p.employees||[];
-                        p.employees.push(row.name);
-                    }
-                }
             }
         }
     });
 
-    saveData('employees',employees);
-    saveData('managers',managers);
     saveData('platoons',platoons);
 
     excelImportData=[];
@@ -799,30 +857,50 @@ document.addEventListener('DOMContentLoaded',()=>{
         btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
     });
 
-    // Form: Add Manager
-    document.getElementById('form-manager')?.addEventListener('submit',e=>{
+    // Form: Add Platoon Manager (inside Sub-tab)
+    document.getElementById('pm-form-manager')?.addEventListener('submit',e=>{
         e.preventDefault();
-        const el=document.getElementById('manager-name');
-        const rankEl=document.getElementById('manager-rank');
-        const phoneEl=document.getElementById('manager-phone');
-        const name=el.value.trim(); if(!name) return;
-        const rank=rankEl?rankEl.value.trim():'';
-        const phone=phoneEl?phoneEl.value.trim():'';
-        const list=getData('managers'); list.push({name,rank,phone}); saveData('managers',list);
-        el.value=''; if(rankEl)rankEl.value=''; if(phoneEl)phoneEl.value=''; renderAdmin(); showSuccess('تمت إضافة المسؤول');
+        const idx = parseInt(document.getElementById('pm-platoon-index').value);
+        if(isNaN(idx)) return;
+        const nameEl = document.getElementById('pm-manager-name');
+        const rankEl = document.getElementById('pm-manager-rank');
+        const phoneEl = document.getElementById('pm-manager-phone');
+        
+        const name = nameEl.value.trim(); if(!name) return;
+        const rank = rankEl.value.trim();
+        const phone = phoneEl.value.trim();
+        
+        const platoons = getData('platoons');
+        platoons[idx].managers = platoons[idx].managers || [];
+        platoons[idx].managers.push({ name, rank, phone });
+        saveData('platoons', platoons);
+        
+        nameEl.value = ''; rankEl.value = ''; phoneEl.value = '';
+        renderPlatoonMembersList();
+        showSuccess('تمت إضافة المسؤول للفصيل');
     });
 
-    // Form: Add Employee
-    document.getElementById('form-employee')?.addEventListener('submit',e=>{
+    // Form: Add Platoon Employee (inside Sub-tab)
+    document.getElementById('pm-form-employee')?.addEventListener('submit',e=>{
         e.preventDefault();
-        const el=document.getElementById('employee-name');
-        const rankEl=document.getElementById('employee-rank');
-        const phoneEl=document.getElementById('employee-phone');
-        const name=el.value.trim(); if(!name) return;
-        const rank=rankEl?rankEl.value.trim():'';
-        const phone=phoneEl?phoneEl.value.trim():'';
-        const list=getData('employees'); list.push({name,rank,phone}); saveData('employees',list);
-        el.value=''; if(rankEl)rankEl.value=''; if(phoneEl)phoneEl.value=''; renderAdmin(); showSuccess('تمت إضافة الموظف');
+        const idx = parseInt(document.getElementById('pm-platoon-index').value);
+        if(isNaN(idx)) return;
+        const nameEl = document.getElementById('pm-employee-name');
+        const rankEl = document.getElementById('pm-employee-rank');
+        const phoneEl = document.getElementById('pm-employee-phone');
+        
+        const name = nameEl.value.trim(); if(!name) return;
+        const rank = rankEl.value.trim();
+        const phone = phoneEl.value.trim();
+        
+        const platoons = getData('platoons');
+        platoons[idx].employees = platoons[idx].employees || [];
+        platoons[idx].employees.push({ name, rank, phone });
+        saveData('platoons', platoons);
+        
+        nameEl.value = ''; rankEl.value = ''; phoneEl.value = '';
+        renderPlatoonMembersList();
+        showSuccess('تمت إضافة الموظف للفصيل');
     });
 
     // Form: Add Point
@@ -843,12 +921,21 @@ document.addEventListener('DOMContentLoaded',()=>{
         const cycleStart=document.getElementById('platoon-cycle-start').value;
         const editIdx   =document.getElementById('platoon-edit-index').value;
         if(!name){alert('يرجى إدخال اسم الفصيل');return;}
-        const managers = Array.from(document.querySelectorAll('#platoon-managers-sel .mgr-chk:checked')).map(c=>c.value);
-        const employees= Array.from(document.querySelectorAll('#platoon-employees-sel .emp-chk:checked')).map(c=>c.value);
         const platoons=getData('platoons');
-        const record={name,cycleStart,managers,employees};
-        if(editIdx!==''){platoons[Number(editIdx)]=record;showSuccess('تم تعديل الفصيل');}
-        else{platoons.push(record);showSuccess('تمت إضافة الفصيل');}
+        
+        if(editIdx!==''){
+            const idx = Number(editIdx);
+            platoons[idx].name = name;
+            platoons[idx].cycleStart = cycleStart;
+            platoons[idx].managers = platoons[idx].managers || [];
+            platoons[idx].employees = platoons[idx].employees || [];
+            showSuccess('تم تعديل الفصيل');
+        }
+        else{
+            const record = { name, cycleStart, managers: [], employees: [] };
+            platoons.push(record);
+            showSuccess('تمت إضافة الفصيل');
+        }
         saveData('platoons',platoons);
         e.target.reset();
         document.getElementById('platoon-edit-index').value='';
