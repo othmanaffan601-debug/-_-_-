@@ -811,15 +811,15 @@ function buildWaReport(){
 
     (p.employees||[]).forEach(e => {
         const s = window.empStatuses[e.name] || 'حاضر';
-        const nameWithRank = (e.rank ? e.rank + '/' : '') + e.name;
+        const nameOnly = e.name;
         if(s === 'حاضر') {
             presentCount++;
         } else if(grouped[s]) {
-            grouped[s].push(nameWithRank);
+            grouped[s].push(nameOnly);
         }
     });
 
-    const managersStr=(p.managers||[]).map(m=>(m.rank?m.rank+'/':'')+m.name).join('\n ');
+    const managersStr=(p.managers||[]).map(m=>m.name).join('\n ');
 
     let txt='';
     txt+=`*سيدي ضابط المركز - مسؤول المركز المناوب*\n\n`;
