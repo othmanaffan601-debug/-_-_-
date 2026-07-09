@@ -732,12 +732,14 @@ window.assignEmpToPointViaSelect = function(pointName) {
     pointAssignments[pointName].add(empName);
     sel.value = ''; // reset selection
     renderAssignedChips(pointName);
+    refreshPointsUI();
 };
 
 window.removeEmpFromPoint = function(pointName, empName) {
     if(pointAssignments[pointName]) {
         pointAssignments[pointName].delete(empName);
         renderAssignedChips(pointName);
+        refreshPointsUI();
     }
 };
 
@@ -759,10 +761,16 @@ function refreshPointsUI(){
         }
     });
 
-    // Rebuild select options
+    // Gather all assigned employees
+    const allAssigned = new Set();
+    Object.values(pointAssignments).forEach(assignedSet => {
+        assignedSet.forEach(empName => allAssigned.add(empName));
+    });
+
+    // Rebuild select options excluding assigned employees
     let selectOptions = '<option value="">اختر الموظف...</option>';
     employees.forEach(e => {
-        if(window.empStatuses[e.name] === 'حاضر') {
+        if(window.empStatuses[e.name] === 'حاضر' && !allAssigned.has(e.name)) {
             selectOptions += `<option value="${esc(e.name)}">${e.rank ? esc(e.rank) + '/' : ''}${esc(e.name)}</option>`;
         }
     });
@@ -770,7 +778,11 @@ function refreshPointsUI(){
     document.querySelectorAll('.point-select').forEach(sel => {
         const currentVal = sel.value;
         sel.innerHTML = selectOptions;
-        if(window.empStatuses[currentVal] === 'حاضر') sel.value = currentVal;
+        if(window.empStatuses[currentVal] === 'حاضر' && !allAssigned.has(currentVal)) {
+            sel.value = currentVal;
+        } else {
+            sel.value = '';
+        }
     });
 }
 
