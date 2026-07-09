@@ -40,6 +40,29 @@ function saveData(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
     }
 })();
 
+// ─── Default Guard Points ───
+(function initDefaultPoints(){
+    const existing = getData('points');
+    if(existing.length === 0) {
+        const defaultPoints = [
+            { name: 'الرئيسية', icon: 'fa-door-open' },
+            { name: 'الخدمات', icon: 'fa-boxes-stacked' },
+            { name: 'المخازن', icon: 'fa-boxes-stacked' },
+            { name: 'مدخل الموظفين', icon: 'fa-id-badge' },
+            { name: 'غرفة المراقبة', icon: 'fa-video' },
+            { name: 'الدورية', icon: 'fa-person-walking' },
+            { name: 'الامانات', icon: 'fa-lock' },
+            { name: 'مدخل الزوار', icon: 'fa-users' },
+            { name: 'مدخل القاعات', icon: 'fa-landmark' },
+            { name: 'دورية القاعات 1', icon: 'fa-person-walking' },
+            { name: 'دورية القاعات 2', icon: 'fa-person-walking' },
+            { name: 'دورية القاعات 3', icon: 'fa-person-walking' },
+            { name: 'مخرج القاعات', icon: 'fa-door-open' }
+        ];
+        saveData('points', defaultPoints);
+    }
+})();
+
 // ─── Rotation (2+2+2+4 = 10-day cycle) ───
 // Day 0,1 → ليل | Day 2,3 → ظهر | Day 4,5 → صباح | Day 6-9 → إجازة
 const CYCLE_LEN = 10;
