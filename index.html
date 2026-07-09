@@ -26,11 +26,14 @@
             <div class="logo-text"><h1>نظام المتحف</h1><span>لوحة التحكم</span></div>
         </div>
         <nav class="sidebar-nav">
-            <a class="nav-item active" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i><span>سطح المكتب</span></a>
+            <a class="nav-item" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i><span>سطح المكتب</span></a>
             <a class="nav-item" data-page="admin"><i class="fa-solid fa-sliders"></i><span>الإدارة</span></a>
             <a class="nav-item" data-page="shifts"><i class="fa-solid fa-clock-rotate-left"></i><span>جدول الدوام</span></a>
             <a class="nav-item" data-page="calendar"><i class="fa-solid fa-calendar-days"></i><span>التقويم</span></a>
+            <a class="nav-item" data-page="census"><i class="fa-solid fa-clipboard-list"></i><span>كشف الموظفين</span></a>
             <a class="nav-item" data-page="whatsapp"><i class="fa-brands fa-whatsapp"></i><span>البلاغ اليومي</span></a>
+            <div style="height:1px; background:var(--glass-b); margin: 10px 0;"></div>
+            <a class="nav-item" onclick="downloadExcelTemplate()" style="color:#10b981;"><i class="fa-solid fa-file-excel"></i><span>تحميل نموذج Excel</span></a>
         </nav>
         <div class="sidebar-footer">
             <div class="clock-display">
@@ -101,10 +104,13 @@
 
             <!-- ─── ADMIN ─── -->
             <div class="page" id="page-admin" style="display:none">
-                <div class="tab-bar">
-                    <button class="tab-btn active" data-tab="tab-platoons"><i class="fa-solid fa-shield-halved"></i> الفصائل</button>
-                    <button class="tab-btn" data-tab="tab-points"><i class="fa-solid fa-location-dot"></i> النقاط</button>
-                    <button class="tab-btn" data-tab="tab-excel"><i class="fa-solid fa-file-excel"></i> استيراد Excel</button>
+                <div class="tab-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                        <button class="tab-btn active" data-tab="tab-platoons"><i class="fa-solid fa-shield-halved"></i> الفصائل</button>
+                        <button class="tab-btn" data-tab="tab-points"><i class="fa-solid fa-location-dot"></i> النقاط</button>
+                        <button class="tab-btn" data-tab="tab-excel"><i class="fa-solid fa-file-excel"></i> استيراد Excel</button>
+                    </div>
+                    <button class="btn btn-sm" onclick="downloadExcelTemplate()" style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.5); color:#34d399; font-weight:bold; padding:7px 15px;"><i class="fa-solid fa-file-arrow-down fa-lg"></i> تحميل النموذج الفارغ للاستيراد</button>
                 </div>
 
                 <!-- TAB: Platoons -->
@@ -289,14 +295,25 @@
                         </div>
 
                         <div class="excel-format-hint glass">
-                            <h4><i class="fa-solid fa-circle-info"></i> تنسيق الملف المطلوب</h4>
-                            <p>يجب أن يحتوي ملف Excel على الأعمدة التالية في الصف الأول (عناوين):</p>
-                            <div class="excel-cols">
-                                <span class="excel-col-badge">الاسم <span class="required">*</span></span>
-                                <span class="excel-col-badge">النوع <small>(موظف / مسؤول)</small></span>
-                                <span class="excel-col-badge">الفصيل <small>(اسم الفصيل)</small></span>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h4><i class="fa-solid fa-circle-info"></i> تنسيق الملف المطلوب</h4>
+                                <button class="btn btn-sm btn-primary" onclick="downloadExcelTemplate()"><i class="fa-solid fa-download"></i> تحميل نموذج Excel</button>
                             </div>
-                            <small style="color:var(--text-muted)">* الاسم فقط إجباري. إذا لم يُحدد النوع، يُضاف كموظف افتراضياً.</small>
+                            <p>يجب أن يحتوي ملف Excel على الأعمدة التالية في الصف الأول (عناوين):</p>
+                            <div class="excel-cols" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">
+                                <span class="excel-col-badge">الرقم الوظيفي</span>
+                                <span class="excel-col-badge">الرتبة</span>
+                                <span class="excel-col-badge">أسم الفصيل <span class="required">*</span></span>
+                                <span class="excel-col-badge">أسم الموظف <span class="required">*</span></span>
+                                <span class="excel-col-badge">أسم الوظيفة</span>
+                                <span class="excel-col-badge">رقم الهاتف</span>
+                                <span class="excel-col-badge">الولاية</span>
+                                <span class="excel-col-badge">السنوية</span>
+                                <span class="excel-col-badge">الدورات</span>
+                                <span class="excel-col-badge">تعويضات</span>
+                                <span class="excel-col-badge">النوع <small>(موظف/مسؤول)</small></span>
+                            </div>
+                            <small style="color:var(--text-muted); display:block; margin-top:8px;">* أسم الموظف وأسم الفصيل إجبارية. إذا لم يُحدد النوع، يُضاف كموظف افتراضياً.</small>
                         </div>
 
                         <div class="form-group" style="margin-top:16px; max-width:400px">
@@ -321,9 +338,10 @@
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                            <th>الاسم</th>
+                                            <th>أسم الموظف</th>
                                             <th>النوع</th>
-                                            <th>الفصيل</th>
+                                            <th>أسم الفصيل</th>
+                                            <th>الرقم الوظيفي</th>
                                         </tr>
                                     </thead>
                                     <tbody id="excel-preview-tbody"></tbody>
@@ -392,6 +410,41 @@
                 </div>
             </div>
 
+            <!-- ─── CENSUS (كشف الموظفين) ─── -->
+            <div class="page" id="page-census" style="display:none">
+                <div class="form-section glass">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                        <div class="form-section-title" style="margin-bottom:0; border:none; padding:0;">
+                            <i class="fa-solid fa-clipboard-list fa-lg" style="color:#10b981"></i>
+                            <h2>كشف الموظفين الشامل</h2>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="census-search" class="inp" placeholder="بحث بالاسم، الفصيل، أو الرقم..." style="width:250px;">
+                            <button class="btn btn-success" onclick="downloadExcelTemplate()"><i class="fa-solid fa-download"></i> نموذج Excel</button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table class="data-table" id="census-table">
+                            <thead>
+                                <tr>
+                                    <th>الرقم الوظيفي</th>
+                                    <th>الرتبة</th>
+                                    <th>أسم الموظف</th>
+                                    <th>أسم الفصيل</th>
+                                    <th>النوع</th>
+                                    <th>أسم الوظيفة</th>
+                                    <th>رقم الهاتف</th>
+                                    <th>الولاية</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="census-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- ─── WHATSAPP REPORT ─── -->
             <div class="page" id="page-whatsapp" style="display:none">
                 <div class="form-section glass">
@@ -439,22 +492,8 @@
                             <div class="wa-step-num">2</div>
                             <div class="wa-step-body">
                                 <h3>تحديد الحضور <span class="attendance-count" id="attendance-count"></span></h3>
-                                <p class="step-hint">انقر على اسم الموظف للتبديل بين حاضر / غائب</p>
-                                <div id="wa-attendance-grid" class="attendance-grid"></div>
-                                <div class="form-row" style="margin-top:14px">
-                                    <div class="form-group">
-                                        <label><i class="fa-solid fa-gun" style="color:#f87171"></i> رماية</label>
-                                        <textarea id="wa-shooting" class="inp" rows="2" placeholder="أسماء الموجودين في الرماية..."></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <label><i class="fa-solid fa-book" style="color:#fb923c"></i> دورات</label>
-                                        <textarea id="wa-courses" class="inp" rows="2"></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <label><i class="fa-solid fa-scissors" style="color:#f59e0b"></i> خصم / موعد طبي</label>
-                                        <textarea id="wa-deductions" class="inp" rows="2" placeholder="الاسم - من تاريخ ... إلى ..."></textarea>
-                                    </div>
-                                </div>
+                                <p class="step-hint">اختر حالة كل موظف. الموظفون في حالة "حاضر" فقط سيظهرون في توزيع النقاط.</p>
+                                <div id="wa-attendance-grid" class="attendance-grid" style="display:flex; flex-direction:column; gap:8px;"></div>
                             </div>
                         </div>
 
@@ -508,6 +547,69 @@
             <button class="btn btn-danger"    id="confirm-yes">نعم، حذف</button>
             <button class="btn btn-secondary" id="confirm-no">إلغاء</button>
         </div>
+    </div>
+</div>
+
+<!-- Edit Staff Modal -->
+<div class="modal-backdrop" id="edit-staff-modal" style="display:none">
+    <div class="modal glass" style="max-width:600px; width:90%;">
+        <div class="form-section-title" style="margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+            <i class="fa-solid fa-user-pen fa-lg" style="color:#3b82f6"></i>
+            <h3>تعديل بيانات الموظف</h3>
+        </div>
+        <form id="form-edit-staff">
+            <input type="hidden" id="edit-staff-platoon-idx">
+            <input type="hidden" id="edit-staff-type">
+            <input type="hidden" id="edit-staff-idx">
+            
+            <div class="form-row">
+                <div class="form-group" style="flex:1">
+                    <label>الرقم الوظيفي</label>
+                    <input type="text" id="edit-staff-id" class="inp" placeholder="الرقم الوظيفي">
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label>الرتبة</label>
+                    <input type="text" id="edit-staff-rank" class="inp" placeholder="الرتبة">
+                </div>
+                <div class="form-group" style="flex:2">
+                    <label>أسم الموظف <span class="required">*</span></label>
+                    <input type="text" id="edit-staff-name" class="inp" placeholder="أسم الموظف" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:1">
+                    <label>أسم الوظيفة</label>
+                    <input type="text" id="edit-staff-job" class="inp" placeholder="أسم الوظيفة">
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label>رقم الهاتف</label>
+                    <input type="text" id="edit-staff-phone" class="inp" placeholder="رقم الهاتف">
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label>الولاية</label>
+                    <input type="text" id="edit-staff-state" class="inp" placeholder="الولاية">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:1">
+                    <label>السنوية</label>
+                    <input type="text" id="edit-staff-annual" class="inp" placeholder="السنوية">
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label>الدورات</label>
+                    <input type="text" id="edit-staff-courses" class="inp" placeholder="الدورات">
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label>تعويضات</label>
+                    <input type="text" id="edit-staff-comps" class="inp" placeholder="تعويضات">
+                </div>
+            </div>
+            
+            <div class="modal-actions" style="margin-top:20px;">
+                <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> حفظ التعديلات</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('edit-staff-modal').style.display='none'"><i class="fa-solid fa-xmark"></i> إلغاء</button>
+            </div>
+        </form>
     </div>
 </div>
 

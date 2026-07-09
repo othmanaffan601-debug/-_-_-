@@ -88,7 +88,7 @@ function updateClock(){
 }
 
 // ─── Navigation ───
-const PAGE_TITLES={dashboard:'سطح المكتب',admin:'الإدارة',shifts:'جدول الدوام',calendar:'التقويم',whatsapp:'البلاغ اليومي'};
+const PAGE_TITLES={dashboard:'سطح المكتب',admin:'الإدارة',shifts:'جدول الدوام',calendar:'التقويم',census:'كشف الموظفين',whatsapp:'البلاغ اليومي'};
 function goTo(key){
     document.querySelectorAll('.page').forEach(p=>p.style.display='none');
     const pg=document.getElementById('page-'+key);
@@ -100,6 +100,7 @@ function goTo(key){
     if(key==='admin')     renderAdmin();
     if(key==='shifts')    renderShifts();
     if(key==='calendar')  initCalendar();
+    if(key==='census')    renderCensus();
     if(key==='whatsapp')  initWaPage();
     document.getElementById('sidebar')?.classList.remove('open');
 }
@@ -298,9 +299,9 @@ window.renderPlatoonMembersList = function() {
         const list = p.managers || [];
         mgrList.innerHTML = list.length === 0 ? '<p style="color:var(--muted);padding:8px;font-size:.82rem">لا يوجد مسؤولون في هذا الفصيل.</p>' :
             list.map((m, i) => `<div class="data-item">
-                <span class="data-item-name">${esc(m.name)} <small style="color:var(--muted);margin-right:10px">${m.rank ? `(${esc(m.rank)})` : ''} ${m.phone ? `📱 ${esc(m.phone)}` : ''}</small></span>
+                <span class="data-item-name">${esc(m.name)} <small style="color:var(--muted);margin-right:10px">${m.rank ? `(${esc(m.rank)})` : ''} ${m.jobId ? `🆔 ${esc(m.jobId)}` : ''} ${m.phone ? `📱 ${esc(m.phone)}` : ''}</small></span>
                 <div class="data-item-actions">
-                    <button class="btn btn-primary btn-sm" onclick="editPlatoonManager(${i})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-primary btn-sm" onclick="openEditStaffModal(${idx}, 'manager', ${i})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-danger btn-sm" onclick="deletePlatoonManager(${i})"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>`).join('');
@@ -310,59 +311,75 @@ window.renderPlatoonMembersList = function() {
         const list = p.employees || [];
         empList.innerHTML = list.length === 0 ? '<p style="color:var(--muted);padding:8px;font-size:.82rem">لا يوجد موظفون في هذا الفصيل.</p>' :
             list.map((e, i) => `<div class="data-item">
-                <span class="data-item-name">${esc(e.name)} <small style="color:var(--muted);margin-right:10px">${e.rank ? `(${esc(e.rank)})` : ''} ${e.phone ? `📱 ${esc(e.phone)}` : ''}</small></span>
+                <span class="data-item-name">${esc(e.name)} <small style="color:var(--muted);margin-right:10px">${e.rank ? `(${esc(e.rank)})` : ''} ${e.jobId ? `🆔 ${esc(e.jobId)}` : ''} ${e.phone ? `📱 ${esc(e.phone)}` : ''}</small></span>
                 <div class="data-item-actions">
-                    <button class="btn btn-primary btn-sm" onclick="editPlatoonEmployee(${i})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-primary btn-sm" onclick="openEditStaffModal(${idx}, 'employee', ${i})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-danger btn-sm" onclick="deletePlatoonEmployee(${i})"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>`).join('');
     }
 };
 
-window.editPlatoonManager = function(i) {
-    const idx = parseInt(document.getElementById('pm-platoon-index').value);
+window.openEditStaffModal = function(platoonIdx, type, memberIdx) {
     const platoons = getData('platoons');
-    const list = platoons[idx].managers || [];
-    const n = prompt('تعديل اسم المسؤول:', list[i].name);
-    if(n !== null && n.trim()){
-        const r = prompt('تعديل الرتبة (اتركه فارغاً إن لم يوجد):', list[i].rank || '');
-        const p = prompt('تعديل رقم الهاتف (اتركه فارغاً إن لم يوجد):', list[i].phone || '');
-        list[i].name = n.trim();
-        if(r !== null) list[i].rank = r.trim();
-        if(p !== null) list[i].phone = p.trim();
-        saveData('platoons', platoons);
-        renderPlatoonMembersList();
-        showSuccess('تم التعديل');
-    }
+    const p = platoons[platoonIdx];
+    if(!p) return;
+    const list = type === 'manager' ? p.managers : p.employees;
+    const member = list[memberIdx];
+    if(!member) return;
+    
+    document.getElementById('edit-staff-platoon-idx').value = platoonIdx;
+    document.getElementById('edit-staff-type').value = type;
+    document.getElementById('edit-staff-idx').value = memberIdx;
+    
+    document.getElementById('edit-staff-id').value = member.jobId || '';
+    document.getElementById('edit-staff-rank').value = member.rank || '';
+    document.getElementById('edit-staff-name').value = member.name || '';
+    document.getElementById('edit-staff-job').value = member.jobTitle || '';
+    document.getElementById('edit-staff-phone').value = member.phone || '';
+    document.getElementById('edit-staff-state').value = member.state || '';
+    document.getElementById('edit-staff-annual').value = member.annualLeave || '';
+    document.getElementById('edit-staff-courses').value = member.courses || '';
+    document.getElementById('edit-staff-comps').value = member.compensations || '';
+    
+    document.getElementById('edit-staff-modal').style.display = 'flex';
 };
 
-window.deletePlatoonManager = function(i) {
-    confirmAction('حذف المسؤول من الفصيل؟', () => {
-        const idx = parseInt(document.getElementById('pm-platoon-index').value);
-        const platoons = getData('platoons');
-        platoons[idx].managers.splice(i, 1);
-        saveData('platoons', platoons);
-        renderPlatoonMembersList();
-        showSuccess('تم الحذف');
-    });
-};
-
-window.editPlatoonEmployee = function(i) {
-    const idx = parseInt(document.getElementById('pm-platoon-index').value);
+document.getElementById('form-edit-staff')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const pIdx = parseInt(document.getElementById('edit-staff-platoon-idx').value);
+    const type = document.getElementById('edit-staff-type').value;
+    const mIdx = parseInt(document.getElementById('edit-staff-idx').value);
+    
     const platoons = getData('platoons');
-    const list = platoons[idx].employees || [];
-    const n = prompt('تعديل اسم الموظف:', list[i].name);
-    if(n !== null && n.trim()){
-        const r = prompt('تعديل الرتبة (اتركه فارغاً إن لم يوجد):', list[i].rank || '');
-        const p = prompt('تعديل رقم الهاتف (اتركه فارغاً إن لم يوجد):', list[i].phone || '');
-        list[i].name = n.trim();
-        if(r !== null) list[i].rank = r.trim();
-        if(p !== null) list[i].phone = p.trim();
-        saveData('platoons', platoons);
+    if(!platoons[pIdx]) return;
+    const list = type === 'manager' ? platoons[pIdx].managers : platoons[pIdx].employees;
+    if(!list[mIdx]) return;
+    
+    list[mIdx] = {
+        ...list[mIdx],
+        jobId: document.getElementById('edit-staff-id').value.trim(),
+        rank: document.getElementById('edit-staff-rank').value.trim(),
+        name: document.getElementById('edit-staff-name').value.trim(),
+        jobTitle: document.getElementById('edit-staff-job').value.trim(),
+        phone: document.getElementById('edit-staff-phone').value.trim(),
+        state: document.getElementById('edit-staff-state').value.trim(),
+        annualLeave: document.getElementById('edit-staff-annual').value.trim(),
+        courses: document.getElementById('edit-staff-courses').value.trim(),
+        compensations: document.getElementById('edit-staff-comps').value.trim(),
+    };
+    
+    saveData('platoons', platoons);
+    document.getElementById('edit-staff-modal').style.display = 'none';
+    showSuccess('تم تحديث بيانات الموظف بنجاح');
+    
+    // Re-render based on current view
+    if(document.getElementById('page-census').style.display !== 'none'){
+        renderCensus();
+    } else if(document.getElementById('tab-platoon-manage').style.display !== 'none'){
         renderPlatoonMembersList();
-        showSuccess('تم التعديل');
     }
-};
+});
 
 window.deletePlatoonEmployee = function(i) {
     confirmAction('حذف الموظف من الفصيل؟', () => {
@@ -411,6 +428,56 @@ function renderShifts(){
         </tr>`;
     }).join('');
 }
+
+// ════════════════════════════════════════════════
+//  CENSUS PAGE (كشف الموظفين)
+// ════════════════════════════════════════════════
+function renderCensus() {
+    const platoons = getData('platoons');
+    const tbody = document.getElementById('census-tbody');
+    const searchInput = document.getElementById('census-search');
+    if(!tbody) return;
+    
+    let allStaff = [];
+    platoons.forEach((p, pIdx) => {
+        (p.managers || []).forEach((m, mIdx) => {
+            allStaff.push({...m, platoonName: p.name, type: 'مسؤول', pIdx, mIdx});
+        });
+        (p.employees || []).forEach((e, eIdx) => {
+            allStaff.push({...e, platoonName: p.name, type: 'موظف', pIdx, mIdx: eIdx});
+        });
+    });
+    
+    const query = (searchInput?.value || '').toLowerCase();
+    if(query) {
+        allStaff = allStaff.filter(s => 
+            (s.name && s.name.toLowerCase().includes(query)) ||
+            (s.jobId && s.jobId.toLowerCase().includes(query)) ||
+            (s.platoonName && s.platoonName.toLowerCase().includes(query))
+        );
+    }
+    
+    if(allStaff.length === 0){
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:26px">لا توجد بيانات مطابقة.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = allStaff.map(s => `<tr>
+        <td data-label="الرقم الوظيفي">${esc(s.jobId) || '—'}</td>
+        <td data-label="الرتبة">${esc(s.rank) || '—'}</td>
+        <td data-label="أسم الموظف"><strong>${esc(s.name)}</strong></td>
+        <td data-label="أسم الفصيل"><span class="shift-pill off-pill">${esc(s.platoonName)}</span></td>
+        <td data-label="النوع"><span style="color:${s.type==='مسؤول'?'#a78bfa':'#60a5fa'}">${s.type}</span></td>
+        <td data-label="أسم الوظيفة">${esc(s.jobTitle) || '—'}</td>
+        <td data-label="رقم الهاتف">${esc(s.phone) || '—'}</td>
+        <td data-label="الولاية">${esc(s.state) || '—'}</td>
+        <td>
+            <button class="btn btn-primary btn-sm" onclick="openEditStaffModal(${s.pIdx}, '${s.type==='مسؤول'?'manager':'employee'}', ${s.mIdx})"><i class="fa-solid fa-pen"></i></button>
+        </td>
+    </tr>`).join('');
+}
+
+document.getElementById('census-search')?.addEventListener('input', renderCensus);
 
 // ════════════════════════════════════════════════
 //  CALENDAR
@@ -550,50 +617,54 @@ function loadWaPlatoon(idx){
 }
 
 // Attendance chips state: Set of present employees (stores names as strings)
-const presentEmployees = new Set();
+window.empStatuses = {};
 
 function renderWaAttendance(employees){
-    presentEmployees.clear();
-    employees.forEach(e=>presentEmployees.add(e.name));
+    window.empStatuses = {};
+    employees.forEach(e => empStatuses[e.name] = 'حاضر'); // Default to حاضر
 
-    const grid=document.getElementById('wa-attendance-grid');
+    const grid = document.getElementById('wa-attendance-grid');
     if(!grid) return;
     if(employees.length===0){
         grid.innerHTML='<p style="color:var(--muted);font-size:.83rem">لا يوجد موظفون في هذا الفصيل. أضفهم من قسم الإدارة.</p>';
         updateAttendanceCount();
         return;
     }
-    grid.innerHTML=employees.map(e=>`
-        <span class="attend-chip present" data-emp="${esc(e.name)}" onclick="toggleAttendance(this)">
-            ${e.rank ? esc(e.rank) + '/' : ''}${esc(e.name)}
-        </span>`).join('');
+    const statuses = ['حاضر', 'غياب', 'رماية', 'دورات', 'خصم', 'موعد طبي', 'سنوية', 'أسناد', 'تعويضية', 'أحتياط', 'حالة وفاة', 'أجازة أبوة', 'أجازة زواج', 'مرافق مريض', 'أجازة طبية'];
+    
+    grid.innerHTML = employees.map(e => `
+        <div class="data-item" style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="data-item-name" style="font-weight:bold;">${e.rank ? esc(e.rank) + '/' : ''}${esc(e.name)}</div>
+            <select class="inp" style="width:130px; padding:6px 10px; font-weight:bold;" onchange="changeEmpStatus('${esc(e.name).replace(/'/g, "\\\\'")}', this.value)">
+                ${statuses.map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
+        </div>
+    `).join('');
+    
     updateAttendanceCount();
 }
 
-function toggleAttendance(chip){
-    const name=chip.dataset.emp;
-    if(presentEmployees.has(name)){
-        presentEmployees.delete(name);
-        chip.classList.remove('present');
-        chip.classList.add('absent');
-        // Remove from all point assignments
-        Object.keys(pointAssignments).forEach(k=>pointAssignments[k].delete(name));
-    } else {
-        presentEmployees.add(name);
-        chip.classList.remove('absent');
-        chip.classList.add('present');
+window.changeEmpStatus = function(empName, newStatus) {
+    empStatuses[empName] = newStatus;
+    // If they changed to anything other than حاضر, remove from assignments
+    if(newStatus !== 'حاضر') {
+        Object.keys(pointAssignments).forEach(k => pointAssignments[k].delete(empName));
     }
     updateAttendanceCount();
-    refreshPointButtons();
-}
+    refreshPointsUI();
+};
 
 function updateAttendanceCount(){
-    const el=document.getElementById('attendance-count');
-    if(el) el.textContent=`${presentEmployees.size} حاضر`;
+    const el = document.getElementById('attendance-count');
+    if(!el) return;
+    let present = 0;
+    Object.values(empStatuses).forEach(s => { if(s === 'حاضر') present++; });
+    el.textContent = `${present} حاضر`;
 }
 
 // ── Points Assignment ──
 function renderWaPoints(employees){
+    window.waCurrentEmployees = employees; // store for refresh
     const points=getData('points');
     const grid=document.getElementById('wa-points-assign');
     if(!grid) return;
@@ -604,53 +675,102 @@ function renderWaPoints(employees){
 
     grid.innerHTML=points.map(pt=>{
         if(!pointAssignments[pt.name]) pointAssignments[pt.name]=new Set();
-        const empBtns=employees.map(e=>`
-            <button type="button"
-                class="point-emp-btn ${presentEmployees.has(e.name)?'':'absent'}"
-                data-emp="${esc(e.name)}"
-                data-point="${esc(pt.name)}"
-                onclick="togglePointAssign(this)">
-                ${e.rank ? esc(e.rank) + '/' : ''}${esc(e.name)}
-            </button>`).join('');
+        
+        let selectOptions = '<option value="">اختر الموظف...</option>';
+        employees.forEach(e => {
+            if(window.empStatuses[e.name] === 'حاضر') {
+                selectOptions += `<option value="${esc(e.name)}">${e.rank ? esc(e.rank) + '/' : ''}${esc(e.name)}</option>`;
+            }
+        });
+
         return `
         <div class="point-assign-card">
             <div class="point-assign-header">
                 <i class="fa-solid ${esc(pt.icon||'fa-location-dot')}"></i>
                 ${esc(pt.name)}
             </div>
-            <div class="point-label">انقر على الاسم لإضافته لهذه النقطة:</div>
-            <div class="point-assigned-list" id="point-emps-${esc(pt.name).replace(/\s/g,'_')}">
-                ${empBtns.length>0?empBtns:'<span style="color:var(--muted);font-size:.78rem">لا يوجد موظفون في الفصيل</span>'}
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <select class="inp point-select" id="sel-point-${esc(pt.name).replace(/\\s/g,'_')}" style="flex:1">
+                    ${selectOptions}
+                </select>
+                <button type="button" class="btn btn-primary btn-sm" onclick="assignEmpToPointViaSelect('${esc(pt.name).replace(/'/g, "\\\\'")}')"><i class="fa-solid fa-plus"></i></button>
+            </div>
+            <div class="point-assigned-list" id="point-emps-${esc(pt.name).replace(/\\s/g,'_')}">
+                <!-- Chips rendered here -->
             </div>
         </div>`;
     }).join('');
+    
+    // Initial render of chips
+    points.forEach(pt => renderAssignedChips(pt.name));
 }
 
-function togglePointAssign(btn){
-    const emp=btn.dataset.emp;
-    const point=btn.dataset.point;
-    if(!presentEmployees.has(emp)) return; // can't assign absent employee
-    if(!pointAssignments[point]) pointAssignments[point]=new Set();
-
-    if(pointAssignments[point].has(emp)){
-        pointAssignments[point].delete(emp);
-        btn.classList.remove('assigned');
-    } else {
-        pointAssignments[point].add(emp);
-        btn.classList.add('assigned');
+window.renderAssignedChips = function(pointName) {
+    const container = document.getElementById('point-emps-' + pointName.replace(/\\s/g,'_'));
+    if(!container) return;
+    const assigned = pointAssignments[pointName];
+    if(!assigned || assigned.size === 0) {
+        container.innerHTML = '<span style="color:var(--muted);font-size:.78rem">لا يوجد موظفون معينون</span>';
+        return;
     }
-}
+    
+    container.innerHTML = Array.from(assigned).map(emp => `
+        <span class="point-emp-btn assigned" style="display:inline-flex; align-items:center; gap:5px; padding:3px 10px;">
+            ${esc(emp)} 
+            <i class="fa-solid fa-xmark" style="cursor:pointer; color:#fca5a5; background:rgba(239,68,68,0.2); border-radius:50%; padding:2px 4px; font-size:10px;" onclick="removeEmpFromPoint('${esc(pointName).replace(/'/g, "\\\\'")}', '${esc(emp).replace(/'/g, "\\\\'")}')"></i>
+        </span>
+    `).join('');
+};
 
-function refreshPointButtons(){
-    document.querySelectorAll('.point-emp-btn').forEach(btn=>{
-        const emp=btn.dataset.emp;
-        const absent=!presentEmployees.has(emp);
-        btn.classList.toggle('absent', absent);
-        if(absent){
-            const point=btn.dataset.point;
-            if(pointAssignments[point]) pointAssignments[point].delete(emp);
-            btn.classList.remove('assigned');
+window.assignEmpToPointViaSelect = function(pointName) {
+    const sel = document.getElementById('sel-point-' + pointName.replace(/\\s/g,'_'));
+    if(!sel) return;
+    const empName = sel.value;
+    if(!empName) return;
+    
+    if(!pointAssignments[pointName]) pointAssignments[pointName] = new Set();
+    pointAssignments[pointName].add(empName);
+    sel.value = ''; // reset selection
+    renderAssignedChips(pointName);
+};
+
+window.removeEmpFromPoint = function(pointName, empName) {
+    if(pointAssignments[pointName]) {
+        pointAssignments[pointName].delete(empName);
+        renderAssignedChips(pointName);
+    }
+};
+
+function refreshPointsUI(){
+    const points = getData('points');
+    const employees = window.waCurrentEmployees || [];
+    
+    // Clean up assignments for absent employees
+    points.forEach(pt => {
+        if(pointAssignments[pt.name]) {
+            let changed = false;
+            Array.from(pointAssignments[pt.name]).forEach(empName => {
+                if(window.empStatuses[empName] !== 'حاضر') {
+                    pointAssignments[pt.name].delete(empName);
+                    changed = true;
+                }
+            });
+            if(changed) renderAssignedChips(pt.name);
         }
+    });
+
+    // Rebuild select options
+    let selectOptions = '<option value="">اختر الموظف...</option>';
+    employees.forEach(e => {
+        if(window.empStatuses[e.name] === 'حاضر') {
+            selectOptions += `<option value="${esc(e.name)}">${e.rank ? esc(e.rank) + '/' : ''}${esc(e.name)}</option>`;
+        }
+    });
+
+    document.querySelectorAll('.point-select').forEach(sel => {
+        const currentVal = sel.value;
+        sel.innerHTML = selectOptions;
+        if(window.empStatuses[currentVal] === 'حاضر') sel.value = currentVal;
     });
 }
 
@@ -665,17 +785,28 @@ function buildWaReport(){
     const day      =document.getElementById('wa-day').value;
     const dateRaw  =document.getElementById('wa-date').value;
     const shiftType=document.getElementById('wa-shift-type').value;
-    const shooting =document.getElementById('wa-shooting').value.trim();
-    const courses  =document.getElementById('wa-courses').value.trim();
-    const deductions=document.getElementById('wa-deductions').value.trim();
 
     let dateStr=dateRaw;
     if(dateRaw){ const d=new Date(dateRaw); if(!isNaN(d)) dateStr=`${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`; }
 
     const totalEmps=(p.employees||[]).length;
-    const presentArr=Array.from(presentEmployees);
-    const absentArr=(p.employees||[]).filter(e=>!presentEmployees.has(e.name)).map(e=>(e.rank?e.rank+'/':'')+e.name);
-    const presentCount=presentArr.length;
+    
+    // Group employees by status
+    const grouped = {};
+    const statuses = ['غياب', 'رماية', 'دورات', 'خصم', 'موعد طبي', 'سنوية', 'أسناد', 'تعويضية', 'أحتياط', 'حالة وفاة', 'أجازة أبوة', 'أجازة زواج', 'مرافق مريض', 'أجازة طبية'];
+    statuses.forEach(s => grouped[s] = []);
+    let presentCount = 0;
+
+    (p.employees||[]).forEach(e => {
+        const s = window.empStatuses[e.name] || 'حاضر';
+        const nameWithRank = (e.rank ? e.rank + '/' : '') + e.name;
+        if(s === 'حاضر') {
+            presentCount++;
+        } else if(grouped[s]) {
+            grouped[s].push(nameWithRank);
+        }
+    });
+
     const managersStr=(p.managers||[]).map(m=>(m.rank?m.rank+'/':'')+m.name).join('\n ');
 
     let txt='';
@@ -688,10 +819,12 @@ function buildWaReport(){
     if(dateStr) txt+=`*💭${dateStr}*💭\n`;
     txt+=`\n♕ العدد الكلي للفصيل(${totalEmps})\n\n`;
     txt+=`👮🏻‍♂️▪️مسؤول الفصيل /\n ${managersStr}\n\n`;
-    if(shooting)    txt+=`👮🏻‍♂️▪️رماية / ${shooting}\n`;
-    if(courses)     txt+=`👮🏻‍♂️▪️دورة / ${courses}\n`;
-    if(deductions)  txt+=`👮🏻‍♂️▪️خصم / ${deductions}\n`;
-    if(absentArr.length>0) txt+=`👮🏻‍♂️▪️غياب / ${absentArr.join(' ، ')}\n`;
+    
+    statuses.forEach(s => {
+        if(grouped[s].length > 0) {
+            txt+=`👮🏻‍♂️▪️${s} / ${grouped[s].join(' ، ')}\n`;
+        }
+    });
 
     txt+=`\n💭*العدد الموجود(${presentCount})*💭\n\n`;
 
@@ -754,12 +887,20 @@ function handleExcelFile(file){
             const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 
             // Skip header row
-            const dataRows=rows.slice(1).filter(r=>r[0]&&String(r[0]).trim());
+            const dataRows=rows.slice(1).filter(r=>r.some(cell => cell && String(cell).trim()));
             excelImportData=dataRows.map(r=>({
-                name:String(r[0]||'').trim(),
-                type:String(r[1]||'موظف').trim(),
-                platoon:String(r[2]||'').trim()
-            }));
+                jobId: String(r[0]||'').trim(),
+                rank: String(r[1]||'').trim(),
+                platoon: String(r[2]||'').trim(),
+                name: String(r[3]||'').trim(),
+                jobTitle: String(r[4]||'').trim(),
+                phone: String(r[5]||'').trim(),
+                state: String(r[6]||'').trim(),
+                annualLeave: String(r[7]||'').trim(),
+                courses: String(r[8]||'').trim(),
+                compensations: String(r[9]||'').trim(),
+                type: String(r[10]||'موظف').trim()
+            })).filter(r => r.name); // Name is required
 
             document.getElementById('excel-row-count').textContent=excelImportData.length;
             const tbody=document.getElementById('excel-preview-tbody');
@@ -775,6 +916,7 @@ function handleExcelFile(file){
                             </select>
                         </td>
                         <td>${esc(row.platoon)||'—'}</td>
+                        <td>${esc(row.jobId)||'—'}</td>
                     </tr>`).join('');
             }
             document.getElementById('excel-preview-area').style.display='block';
@@ -801,7 +943,17 @@ function confirmExcelImport(){
             platoons.push(p);
         }
         
-        const person = { name: row.name, rank: '', phone: '' };
+        const person = { 
+            name: row.name, 
+            rank: row.rank, 
+            phone: row.phone,
+            jobId: row.jobId,
+            jobTitle: row.jobTitle,
+            state: row.state,
+            annualLeave: row.annualLeave,
+            courses: row.courses,
+            compensations: row.compensations
+        };
         if(row.type==='مسؤول'){
             p.managers = p.managers || [];
             if(!p.managers.some(m=>m.name===row.name)){
@@ -825,6 +977,35 @@ function confirmExcelImport(){
     renderAdmin();
     showSuccess(`تم الاستيراد بنجاح!\n${addedEmp} موظف و ${addedMgr} مسؤول`);
 }
+
+window.downloadExcelTemplate = function() {
+    if(typeof XLSX === 'undefined') {
+        alert('المكتبة قيد التحميل، يرجى المحاولة بعد قليل.');
+        return;
+    }
+    const headers = [
+        "الرقم الوظيفي", "الرتبة", "أسم الفصيل", "أسم الموظف", "أسم الوظيفة", 
+        "رقم الهاتف", "الولاية", "السنوية", "الدورات", "تعويضات", "النوع"
+    ];
+    // Add one example row
+    const exampleRow = [
+        "12345", "عريف", "فصيل الصقر", "أحمد محمد", "حارس أمن", 
+        "96899999999", "مسقط", "15", "دورة أمنية", "لا يوجد", "موظف"
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
+    
+    // Set some column widths
+    ws['!cols'] = [
+        {wch: 15}, {wch: 10}, {wch: 15}, {wch: 20}, {wch: 15},
+        {wch: 15}, {wch: 15}, {wch: 10}, {wch: 20}, {wch: 20}, {wch: 10}
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "بيانات الموظفين");
+    
+    XLSX.writeFile(wb, "نموذج_كشف_الموظفين.xlsx");
+};
 
 // ════════════════════════════════════════════════
 //  DOMContentLoaded
